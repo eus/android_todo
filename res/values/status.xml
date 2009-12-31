@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="status_values">
+		<item>Open</item>
+		<item>Closed</item>
+		<item>In progress</item>
+	</string-array>
+</resources>

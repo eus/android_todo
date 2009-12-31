@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="app_name">Todo</string>
+	<string name="title">Title</string>
+	<string name="title_asc">Title &#x25BC; </string>
+	<string name="title_desc">Title &#x25B2; </string>
+	<string name="description">Description</string>
+	<string name="deadline">Deadline</string>
+	<string name="deadline_asc">Deadline &#x25BC; </string>
+	<string name="deadline_desc">Deadline &#x25B2; </string>
+	<string name="priority">Priority</string>
+	<string name="priority_asc">Priority &#x25BC; </string>
+	<string name="priority_desc">Priority &#x25B2; </string>
+	<string name="status">Status</string>
+	<string name="status_asc">Status &#x25BC; </string>
+	<string name="status_desc">Status &#x25B2; </string>
+	<string name="save">Save</string>
+	<string name="cancel">Cancel</string>
+	<string name="new_todo">New</string>
+	<string name="edit_todo">Edit</string>
+	<string name="delete_todo">Delete</string>
+</resources>

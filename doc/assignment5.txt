@@ -1,0 +1,32 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf250
+{\fonttbl\f0\fnil\fcharset0 LucidaGrande;\f1\fswiss\fcharset0 ArialMT;}
+{\colortbl;\red255\green255\blue255;\red38\green38\blue38;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww14620\viewh9680\viewkind0
+\deftab720
+\pard\pardeftab720\sl360\sa180\ql\qnatural
+
+\f0\fs24 \cf0 Assignment 5: ToDo List Application for Android\uc0\u8232 -------------------------------------------------------- \u8232 \u8232 This week you will implement a ToDo List application for mobile devices; for the Android platform to be more specific. You will need set up the Android SDK and you will get familiar with the provided Java API for the DalvikVM used in Andoid. You will develop and compile the application in the installed SDK and test it locally in the emulator provided by the SDK.\
+\
+1) Download and install the Android SDK from http://developer.android.com/sdk/index.html and follow the Quick Start Guide given there. Only add the 
+\f1\fs26 \cf2 Android 1.6 platform to the SDK and 
+\f0\fs24 \cf0 do _not_ use the most current version 2.0! We strongly advise you to follow the tutorial at http://developer.android.com/guide/tutorials/hello-world.html to check that your development environment is set up correctly and to get familiar with the SDK.\
+\
+HINT: The Developer's Guide at http://developer.android.com/guide/index.html contains extensive information on how to program for Android.\
+\
+2) Once the SDK is installed and you have tested it is set up correctly, you are good to go for the implementation of the actual application. Your application thereby needs to fulfill the following technical and user requirements:\
+a) the application is be able to manage a number of 1000 individual todo items\
+b) a todo item contains the following mandatory fields:\
+- title: todo item summary string (single line)\
+- detailed todo description: multi-line todo description\
+- deadline: due to date of the todo item\
+- priority: integer ranging from 1 - 5, where 1 is the highest priority\
+- status: can be one of the following states "open" | "closed" |\'a0"in progress"\
+c) when opening the application, the user is presented the list of managed todo items\
+d) the list view does not contain the todo description field\
+e) by default, the application presents the items sorted by deadline\
+f) the user can select to sort the list by deadline, priority or status\
+g) when selecting one of the items from the list, the user is presented the item at hand and is given the possibility modify the shown fields\
+h) changes are persistent, i.e. even if the application is closed, the managed items will show up the next time the application is opened\
+\
+3) Verify that your application is working correctly by running it in the Android emulator included in the SDK. Remember that you can use the debugger in the emulator as well, as explained in the "hello world" tutorial. This will prove very helpful every now and then.\
+}

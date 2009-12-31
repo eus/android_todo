@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/ScrollView01" android:layout_width="fill_parent" android:layout_height="fill_parent">
+	<LinearLayout android:id="@+id/LinearLayout01" android:layout_width="fill_parent" android:layout_height="fill_parent" android:orientation="vertical">
+		<TextView android:id="@+id/TextView01" android:layout_height="wrap_content" android:layout_width="fill_parent" android:text="@string/title"></TextView>
+		<EditText android:selectAllOnFocus="true" android:singleLine="true" android:layout_height="wrap_content" android:layout_width="fill_parent" android:id="@+id/EditTitleText"></EditText>
+		<TextView android:text="@string/deadline" android:id="@+id/TextView03" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<DatePicker android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/EditDeadlineDatePicker"></DatePicker>
+		<TextView android:text="@string/status" android:id="@+id/TextView05" android:layout_width="fill_parent" android:layout_height="wrap_content"></TextView>
+		<Spinner android:layout_width="fill_parent" android:layout_height="wrap_content" android:id="@+id/EditStatusSpinner"></Spinner>
+		<TextView android:text="@string/priority" android:id="@+id/TextView04" android:layout_width="fill_parent" android:layout_height="wrap_content"></TextView>
+		<Spinner android:layout_height="wrap_content" android:layout_width="fill_parent" android:id="@+id/EditPrioritySpinner"></Spinner>
+		<TextView android:id="@+id/TextView02" android:layout_height="wrap_content" android:layout_width="fill_parent" android:text="@string/description"></TextView>
+		<EditText android:selectAllOnFocus="true" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="top" android:inputType="textMultiLine" android:id="@+id/EditDescriptionText" android:lines="5"></EditText>
+		<LinearLayout android:id="@+id/LinearLayout02" android:layout_width="fill_parent" android:layout_height="wrap_content">
+			<Button android:text="@string/save" android:id="@+id/EditSaveButton" android:layout_width="wrap_content" android:layout_weight="1" android:layout_height="wrap_content"></Button>
+			<Button android:text="@string/cancel" android:id="@+id/EditCancelButton" android:layout_width="wrap_content" android:layout_weight="1" android:layout_height="wrap_content"></Button>
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>
