@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-<color name="todo_item_highlighted">#FF777777</color>
-<color name="todo_item_normal">#00000000</color>
-</resources>

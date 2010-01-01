@@ -2,6 +2,7 @@ package com.euscomputerclub.android.todo;
 
 import android.app.ListActivity;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
@@ -12,6 +13,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.TextView;
 
 public class TodoList extends ListActivity {
 
@@ -79,9 +81,13 @@ public class TodoList extends ListActivity {
 	/** The adapter that maps columns in each row in the cursor to the corresponding views. */
 	protected SimpleCursorAdapter rowAdapter;
 	/** The id of the currently selected todo item. */
-	protected long curr_selected_id = -1;
+	protected long curr_selected_id = AdapterView.INVALID_ROW_ID;
 	/** The position of the currently selected todo item. */
-	protected long curr_selected_position = -1;
+	protected int curr_selected_position = AdapterView.INVALID_POSITION;
+	/** The view of the currently selected todo item. */
+	protected LinearLayout curr_selected_row;
+	/** The default color of the TextView in the ListView row. */
+	protected ColorStateList defaultColors;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -129,21 +135,38 @@ public class TodoList extends ListActivity {
 			
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {
-				
-				View v = super.getView(position, convertView, parent);
+
+				LinearLayout v = (LinearLayout) super.getView(position, convertView, parent);
 
 				if (position == curr_selected_position) {
 
-					v.setBackgroundColor(getResources().getColor(R.color.todo_item_highlighted));
+					setHighlight(v);
+					curr_selected_row = v;
 				} else {
 
-					v.setBackgroundColor(getResources().getColor(R.color.todo_item_normal));
+					removeHighlight(v);
 				}
 				
 				return v;
 			}
 		};
 		setListAdapter(rowAdapter);
+		getListView().setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+			public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+
+				if (curr_selected_row != null) {
+
+					removeHighlight(curr_selected_row);
+					curr_selected_row = null;
+				}
+				curr_selected_position = position;
+				curr_selected_id = id;
+			}
+
+			public void onNothingSelected(AdapterView<?> parent) {
+			}
+		});
 
 		updateTodoList();
 		updateSortStatus();
@@ -179,6 +202,41 @@ public class TodoList extends ListActivity {
 			}
 		});
 
+	}
+
+	/** Sets the background of a ListView's row indicating a selection. */
+	protected void setHighlight(LinearLayout v) {
+
+		int childCount = v.getChildCount();
+		for (int i = 0; i < childCount; i++) {
+
+			TextView t = (TextView) v.getChildAt(i);
+			t.setTextColor(0xFF000000);
+		}
+
+		v.setBackgroundDrawable(getResources().getDrawable(
+
+			R.drawable.list_selector_background_focus
+		));
+	}
+
+	/** Remove the background of a ListView's row indicating an unselected item. */
+	protected void removeHighlight(LinearLayout v) {
+
+		int childCount = v.getChildCount();
+		for (int i = 0; i < childCount; i++) {
+
+			TextView t = (TextView) v.getChildAt(i);
+			
+			if (defaultColors == null) {
+	
+				defaultColors = ((TextView) ((LinearLayout) v).getChildAt(0))
+					.getTextColors();
+			}
+			t.setTextColor(defaultColors);
+		}
+
+		v.setBackgroundDrawable(null);
 	}
 
 	@Override
