@@ -45,10 +45,18 @@ public class TodoDb {
 				+ STATUS_COLUMN + " text not null, "
 				+ DESCRIPTION_COLUMN + " text, "
 				+ "UNIQUE (" + TITLE_COLUMN + ", " + DEADLINE_COLUMN + "));");
+		/** The SQL statement to create todo table. */
+		protected static String CREATE_TODO_TABLE_2 = ("create table ? ("
+				+ ID_COLUMN + " integer primary key autoincrement, "
+				+ TITLE_COLUMN + " text not null, "
+				+ DEADLINE_COLUMN + " text not null, "
+				+ PRIORITY_COLUMN + " integer not null, "
+				+ STATUS_COLUMN + " text not null, "
+				+ DESCRIPTION_COLUMN + " text);");
 		/** The DB name. */
 		protected static String DB_NAME = "todo";
 		/** The DB version. */
-		protected static int DB_VERSION = 1;
+		protected static int DB_VERSION = 2;
 
 		/**
 		 * Constructs a TodoDbOpenHelper working on the DB referred by the context.
@@ -66,7 +74,7 @@ public class TodoDb {
 		@Override
 		public void onCreate(SQLiteDatabase arg0) {
 			
-			arg0.execSQL(CREATE_TODO_TABLE);
+			arg0.execSQL(CREATE_TODO_TABLE_2.replace("?", TODO_TABLE));
 		}
 
 		/* (non-Javadoc)
@@ -74,8 +82,20 @@ public class TodoDb {
 		 */
 		@Override
 		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-			
-			Log.e(this.getClass().getName(), "No DB upgrade is allowed yet");
+
+			for (int upgradeTo = oldVersion + 1; upgradeTo <= newVersion; upgradeTo++) {
+
+				if (upgradeTo == 2) {
+
+					db.execSQL(CREATE_TODO_TABLE_2.replace("?", "TMP_TABLE"));
+					db.execSQL("insert into TMP_TABLE select * from " + TODO_TABLE + ";");
+					db.execSQL("drop table " + TODO_TABLE + ";");
+					db.execSQL(CREATE_TODO_TABLE_2.replace("?", TODO_TABLE));
+					db.execSQL("insert into " + TODO_TABLE + " select " + ID_COLUMN + ", " + TITLE_COLUMN + ", " + DEADLINE_COLUMN + ", " + PRIORITY_COLUMN + ", " + STATUS_COLUMN + ", " + DESCRIPTION_COLUMN + " from TMP_TABLE;");
+					db.execSQL("drop table TMP_TABLE;");
+				}
+			}
+// throw new IllegalArgumentException("HOHO: " + oldVersion + ", " + newVersion);
 		}
 	}
 
