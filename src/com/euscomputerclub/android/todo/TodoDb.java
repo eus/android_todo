@@ -45,7 +45,7 @@ public class TodoDb {
 				+ STATUS_COLUMN + " text not null, "
 				+ DESCRIPTION_COLUMN + " text, "
 				+ "UNIQUE (" + TITLE_COLUMN + ", " + DEADLINE_COLUMN + "));");
-		/** The SQL statement to create todo table. */
+		/** The version 2 of the SQL statement to create todo table. */
 		protected static String CREATE_TODO_TABLE_2 = ("create table ? ("
 				+ ID_COLUMN + " integer primary key autoincrement, "
 				+ TITLE_COLUMN + " text not null, "
@@ -53,10 +53,18 @@ public class TodoDb {
 				+ PRIORITY_COLUMN + " integer not null, "
 				+ STATUS_COLUMN + " text not null, "
 				+ DESCRIPTION_COLUMN + " text);");
+		/** The version 3 of the SQL statement to create todo table. */
+		protected static String CREATE_TODO_TABLE_3 = ("create table ? ("
+				+ ID_COLUMN + " integer not null primary key autoincrement, "
+				+ TITLE_COLUMN + " text, "
+				+ DEADLINE_COLUMN + " text, "
+				+ PRIORITY_COLUMN + " integer, "
+				+ STATUS_COLUMN + " text, "
+				+ DESCRIPTION_COLUMN + " text);");
 		/** The DB name. */
 		protected static String DB_NAME = "todo";
 		/** The DB version. */
-		protected static int DB_VERSION = 2;
+		protected static int DB_VERSION = 3;
 
 		/**
 		 * Constructs a TodoDbOpenHelper working on the DB referred by the context.
@@ -74,7 +82,7 @@ public class TodoDb {
 		@Override
 		public void onCreate(SQLiteDatabase arg0) {
 			
-			arg0.execSQL(CREATE_TODO_TABLE_2.replace("?", TODO_TABLE));
+			arg0.execSQL(CREATE_TODO_TABLE_3.replace("?", TODO_TABLE));
 		}
 
 		/* (non-Javadoc)
@@ -94,8 +102,16 @@ public class TodoDb {
 					db.execSQL("insert into " + TODO_TABLE + " select " + ID_COLUMN + ", " + TITLE_COLUMN + ", " + DEADLINE_COLUMN + ", " + PRIORITY_COLUMN + ", " + STATUS_COLUMN + ", " + DESCRIPTION_COLUMN + " from TMP_TABLE;");
 					db.execSQL("drop table TMP_TABLE;");
 				}
+				if (upgradeTo == 3) {
+
+					db.execSQL(CREATE_TODO_TABLE_3.replace("?", "TMP_TABLE"));
+					db.execSQL("insert into TMP_TABLE select * from " + TODO_TABLE + ";");
+					db.execSQL("drop table " + TODO_TABLE + ";");
+					db.execSQL(CREATE_TODO_TABLE_3.replace("?", TODO_TABLE));
+					db.execSQL("insert into " + TODO_TABLE + " select " + ID_COLUMN + ", " + TITLE_COLUMN + ", " + DEADLINE_COLUMN + ", " + PRIORITY_COLUMN + ", " + STATUS_COLUMN + ", " + DESCRIPTION_COLUMN + " from TMP_TABLE;");
+					db.execSQL("drop table TMP_TABLE;");
+				}
 			}
-// throw new IllegalArgumentException("HOHO: " + oldVersion + ", " + newVersion);
 		}
 	}
 
