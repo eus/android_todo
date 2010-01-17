@@ -133,13 +133,18 @@ public class TodoEdit extends Activity {
 		
 		title = c.getString(c.getColumnIndex(TodoDb.TITLE_COLUMN));
 		titleEditText.setText(title);
+
 		deadline = new Deadline(c.getString(c.getColumnIndex(TodoDb.DEADLINE_COLUMN)));
 		deadlineDatePicker.init(deadline.getYear(), deadline.getMonth(), deadline.getDayOfMonth(), null);
+
 		priority = c.getInt(c.getColumnIndex(TodoDb.PRIORITY_COLUMN));
-		prioritySpinner.setSelection((Arrays.binarySearch(priorityValues, String.valueOf(priority))));
+		prioritySpinner.setSelection(priority - 1);
+
 		status = c.getString(c.getColumnIndex(TodoDb.STATUS_COLUMN));
-		statusSpinner.setSelection((Arrays.binarySearch(priorityValues, status)));
+		statusSpinner.setSelection((Arrays.binarySearch(statusValues, status)));
+
 		description = c.getString(c.getColumnIndex(TodoDb.DESCRIPTION_COLUMN));
+		descriptionEditText.setText(description);
 		
 		c.move(oldPos);
 	}
@@ -153,16 +158,18 @@ public class TodoEdit extends Activity {
 		Deadline oldDeadline = deadline;
 		int oldPriority = priority;
 		
+android.util.Log.e("EUS1", oldTitle + ", " + oldDescription + ", " + oldStatus + ", " + oldDeadline.toString() + ", " + oldPriority);
 		updateWidgetValues();
+android.util.Log.e("EUS2", title + ", " + description + ", " + status + ", " + deadline.toString() + ", " + priority);
 		
 		db.updateTodo(
 				id,
 				new boolean[] {
-						title.equals(oldTitle),
-						deadline.equals(oldDeadline),
-						priority == oldPriority,
-						status.equals(oldStatus),
-						description.equals(oldDescription)
+						!title.equals(oldTitle),
+						!deadline.equals(oldDeadline),
+						priority != oldPriority,
+						!status.equals(oldStatus),
+						!description.equals(oldDescription)
 				},
 				title,
 				deadline,
