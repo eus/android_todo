@@ -66,7 +66,7 @@ public class Deadline {
 		Calendar c = new GregorianCalendar(); 
 		c.setTime(d);
 		year = c.get(Calendar.YEAR);
-		month = c.get(Calendar.MONTH) - 1;
+		month = c.get(Calendar.MONTH);
 		dayOfMonth = c.get(Calendar.DAY_OF_MONTH);
 	}
 
@@ -93,8 +93,8 @@ public class Deadline {
 
 		return (String.valueOf(year)
 				+ "-"
-				+ String.valueOf(month + 1)
+				+ (month < 10 ? "0" : "") + String.valueOf(month + 1)
 				+ "-"
-				+ String.valueOf(dayOfMonth));
+				+ (dayOfMonth < 10 ? "0" : "") + String.valueOf(dayOfMonth));
 	}
 }

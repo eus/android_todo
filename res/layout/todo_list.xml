@@ -11,5 +11,7 @@
 		<Button android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/new_todo" android:layout_weight="1" android:id="@+id/MainNewButton"></Button>
 		<Button android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/edit_todo" android:layout_weight="1" android:id="@+id/MainEditButton"></Button>
 		<Button android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/delete_todo" android:layout_weight="1" android:id="@+id/MainDeleteButton"></Button>
+		<Button android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/sync_todo" android:layout_weight="1" android:id="@+id/MainSyncButton"></Button>
+		<Button android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/user" android:layout_weight="1" android:id="@+id/MainUserButton"></Button>
 	</LinearLayout>
 </LinearLayout>

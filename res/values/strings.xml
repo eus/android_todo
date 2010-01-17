@@ -19,4 +19,7 @@
 	<string name="new_todo">New</string>
 	<string name="edit_todo">Edit</string>
 	<string name="delete_todo">Delete</string>
+	<string name="sync_todo">Sync</string>
+	<string name="user">User</string>
+	<string name="user_selection">Please enter your user ID as a natural number</string>
 </resources>

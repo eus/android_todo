@@ -12,5 +12,6 @@
     	</activity>
 	<activity android:name=".TodoEdit"/>
     </application>
+    <uses-permission android:name="android.permission.INTERNET" /> 
     <uses-sdk android:minSdkVersion="4" />
 </manifest> 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:minWidth="200px" android:orientation="vertical" android:id="@+id/LinearLayout01" android:layout_width="fill_parent" android:layout_height="fill_parent" xmlns:android="http://schemas.android.com/apk/res/android">
+	<TextView android:id="@+id/TextView01" android:layout_height="wrap_content" android:layout_width="fill_parent" android:text="@string/user_selection"></TextView>
+	<EditText android:selectAllOnFocus="true" android:singleLine="true" android:layout_height="wrap_content" android:layout_width="fill_parent" android:id="@+id/SelectUserIdText"></EditText>
+	<LinearLayout android:id="@+id/LinearLayout02" android:gravity="center_vertical|center_horizontal" android:layout_weight="1" android:layout_width="fill_parent" android:layout_height="wrap_content">
+		<Button android:text="@string/save" android:id="@+id/SelectUserIdSaveButton" android:layout_width="wrap_content" android:layout_height="wrap_content"></Button>
+	</LinearLayout>
+</LinearLayout>

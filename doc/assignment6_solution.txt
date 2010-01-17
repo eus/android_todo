@@ -1,0 +1,237 @@
+My understanding to the problem is that a person can have multiple Android devices, the person only works with one Android device at a time, and the person always synchronizes the local data in the current Android device before the person uses another Android device. Such a synchronization can only happen at most once before switching over. A pristine Android device that the person uses for the very first time must always be synchronized first.
+
+The rule must be like that. Otherwise, the following three scenarios will occur:
+1. If two devices that belong to the same user never get synchronized, there is no use of having the server.
+2. If the user always synchronizes a device before switching over to another device and the next device is also synchronized before being used, there will never be a conflict. 
+3. If the user always synchronizes a device before switching over to another device but it happens more than once, when the next device is not synchronized before usage, all changes that the user makes in the device will be wiped out when the user synchronizes the device before switching over.
+
+Graphically, the proper situation that happens to a single todo item can be illustrated as follows (the revision number maintained in the device will be incremented by one if there is a change in the item after the synchronization):
+
+new todo	server
+-1
+usage
+sync
+1		0
+			initial sync
+			1
+			usage
+			sync
+		1	2
+usage
+sync
+conflict detected and resolved
+3
+			usage
+			sync
+		2	3
+conflict detected and resolved
+... and so on ..
+
+Another scenario that gives a reason why the revision number in the server should be lower than that of the device:
+Device A	server  Device B        Device C
+new todo
+-1
+usage
+sync
+1		0
+			initial sync
+			1
+usage
+sync
+2		1
+					initial sync
+					2
+usage
+sync
+3		2
+					usage (delete)
+					sync
+		x			x
+			usage
+			sync
+			conflict
+		1	2
+--- revision at the server is incremented as usual --
+usage
+sync
+4		2
+			usage
+			sync
+			conflict
+		3	4
+-----------------------------------------------------
+usage
+sync
+4		3
+			usage
+			sync :-(the changed item gets overwritten)
+--- revision at the server is given the latest sync -
+
+The server will only open one synchronization per user (i.e., when a user is synching a device, another device with the same user ID won't be able to sync while the other one is still being associated).
+
+Deletion of an item is handled as follows:
+1. Deletion at the server but not at the device:
+A new item created at the device is always assigned a revision number -1 that the server will never have because the least revision number at the server is 0. Once the revision number of the local item is 0 or more, detecting the deletion of the item at the server is as simple as recognizing that the server does not transport the item primary key. This case will always be treated as a conflict because the server does not have the revision number of the item anymore so that the application cannot decide whether or not to simply overwrite the local item:
+	- if the local item is to be deleted, it is simply deleted.
+	- if the local item should be copied over to the server, the server will store the item including its revision as it is while the local item will have its revision incremented by one.
+2. Deletion at the device but not at the server:
+A new item created at the device that has not been synchronized will simply be deleted. If an item has ever been synchronized, the item will be kept in the device but will not be shown to the user. Upon the first next synchronization:
+	- if the item does not exist in the server, the item is deleted.
+	- if the item exists in the server and:
+		- the remote item's revision is higher than the local item's, the remote item will overwrite the local item and the local item's revision is incremented by one.
+		- the remote item's revision is equal to the item's:
+			- if the remote and local item's data are the same, both the local and remote item are deleted.
+			- if the remote and local item's data are not the same, conflict resolution only give a notice that the local item is deleted without showing its data while displaying the remote's item data asking whether to copy the remote to local or delete the remote. If the remote is copied to the local item, the local item's revision is incremented by one. If both of them are deleted, they are simply deleted.
+		- the remote item's revision is less that that of the local item, both the local and remote items are deleted.
+
+NOTE (this is invalid with regard to the use of (title, deadline) tuple as a primary key, but nevertheless, it is useful in illustrating the use of a surrogate key): The use of an autoincremented integer substituting the tuple (title, deadline) as a primary key in the local DB in an Android device is because the use of ListView requires it. The server, on the other hand, eliminates the use of such an integer field to avoid complicated update in face of a conflict. For example, the server already has the following record:
+      ID: 20
+      Title: x
+      Deadline: y
+      Priority: a
+      Status: c
+      Description: d
+      Revision: 0
+that is obtained from device B that has that as a new todo upon synchronization. The user then switches to device A without synchronization, which is allowed according to the rule of usage given above. Device A doesn't have that item yet. The user then adds some new items, one of which has the same title and deadline as follows:
+     ID: 22
+     Title: x
+     Deadline: y
+     Priority: b
+     Status: c
+     Description: e
+     Revision: -1
+Since the primary key is actually (title, deadline), the local record in device A and the server record will be treated as a conflict. No matter which version the user picks as the resolution, there is no need to update field ID at all. And, in fact, the server should not transfer field ID at the first place. However, the inertia of the field ID rings a truth: since the field title and deadline is subject to change, the server should also has an autoincremented integer field as a surrogate key. The inertia of the surrogate key will permit an easy update of field title or deadline when the item needs to updated in the server side as illustrated below:
+      Without a surrogate key:
+      Title: x
+      Deadline y
+      * The deadline field is updated to:
+      Title: x
+      Deadline: z
+      * Problem: how to tell the server that (x,y) should be updated to (x,z)?
+Therefore, the server will still need to transfer an ID field.
+
+* The synchronization process will work at the client's side in the following way:
+1. All todos that is sent to the client is parsed from the nested TLV (type-length-value) packets and stored in a temporary table named sync.
+2. All local todos in table todo of the client is iterated. For each item, the corresponding todo in the sync table is looked up to see what kind of action should be taken. The following scenarios state the kind of conditions that will be encountered along with the exact action that will be taken in a particular condition. The action is marked with [OPERATION].
+
+resolve_two_items_conflict()
+resolve_remote_deletion()
+resolve_local_deletion()
+update_todo_revision():
+	update todo set revision = ? where id = ?
+update_sync():
+	update sync set
+	       title = (if sync.title == local_todo.title ? NULL : local_todo.title)
+	       deadline = (if sync.deadline == local_todo.deadline ? NULL : local_todo.deadline)
+	       priority = (if sync.priority == local_todo.priority ? NULL : local_todo.priority)
+	       status = (if sync.status == local_todo.status ? NULL : local_todo.status)
+	       description = (if sync.description == local_todo.description ? NULL : local_todo.description)
+	       revision = NULL
+	where title = local_todo.title and deadline = local_todo.deadline
+	// This record has its revision number set to NULL as an update indicator but one of the following fields
+	// is not NULL: title, deadline, priority, status, description.
+	// The NULL field won't be transported back to the server but only the updated field and the id field.
+	// Upon receiving an update, the server will increment the revision number by one.
+replace_todo():
+	update todo set
+	       priority = sync_todo.priority
+	       status = sync_todo.status
+	       description = sync_todo.description
+	       revision = sync_todo.revision + 1
+	where title = sync_todo.title and deadline = sync_todo.deadline
+insert_to_sync():
+	insert into sync (id, title, deadline, priority, status, description, revision)
+	       values (rev == NEW_TODO ? NULL : local_todo.id, local_todo.title, local_todo.deadline, local_todo.priority,
+	       	      local_todo.status, local_todo.description, rev == NEW_TODO ? -1 : -rev - 2)
+	// This record has its revision number set to -1 as a new indicator
+	// This record has its revision number set to < -1 as a resurrection indicator (the client-server data constructor has to use the absolute value of (revision + 2) so that the server can directly save it)
+	// The ID of a new todo item has to match the one assigned by the server. So, after the whole sync business is at the completion point, all local todo items with ID == -1 are deleted before all todo items in sync marked with -1 (new indicator) are inserted into the local todo table. All new todo items are assumed to have IDs greater than the ID of the last synchronized todo item so that shuffling new IDs don't have any effect on the existing todo items. The shuffling is needed because the server may alread contain new todo items with overlapping IDs from another device of the same user.
+remove_sync():
+	delete from sync where id = ?
+delete_local():
+	delete from todo where id = ?
+delete_sync():
+	update sync set
+	       title = NULL
+	       deadline = NULL
+	       priority = NULL
+	       status = NULL
+	       description = NULL
+	       revision = NULL
+	where id = ?
+	// This record has all of its fields but id set to NULL indicating there is no update but deletion instead.
+insert_to_local():
+	insert into todo
+	select id, title, deadline, priority, status, description, revision + 1
+	from sync
+	where id is not in (select id from todo)
+	and title is not null and deadline is not null and priority is not null and status is not null and description is not null and revision is not null
+
+Scenarios:
+1. A new local item is sent to the server (zero will be assigned as the revision) and 1 is given as the revision of the local item. [A1]
+[OPERATION] insert_to_sync(local_todo, NEW_TODO)
+
+2. For each local item whose revision number is greater than that of the remote's:
+   - If there is no change in the data, there is no need to sync it [A2]
+[OPERATION] remove_sync(sync_todo.id)
+   - If there is a change in the data, the remote item is updated with the local item. Afterward, the local item's revision is incremented by one. [A3]
+[OPERATION] update_sync(local_todo)
+[OPERATION] update_todo_revision(local_todo.id, local_todo.revision + 1)
+
+3. For each local item whose revision number is less than that of the remote's, the remote item is copied over overwriting the local one including its revision. Afterward, the local item's revision is incremented by one. [A4]
+[OPERATION] replace_todo(sync_todo)
+[OPERATION] remove_sync(sync_todo.id) // not taken into account for sync
+
+4. For each local item whose revision number is equal to that of the remote's, check for any difference in the data.
+[OPERATION] are_todos_equal(local_todo, remote_todo)
+	    - If they are equal, there is no need to sync the data but the local revision is incremented by one. [A15]
+[OPERATION] remove_sync(sync_todo.id)
+[OPERATION] update_todo_revision(local_todo.id, local_todo.revision + 1)
+	    - If they are not equal, there is a conflict.
+[OPERATION] resolve_two_items_conflict()
+			- If the local item is picked, the local item's revision is incremented by two (to be ahead from the server's revision by one) and the item in the server will be updated. [A5]
+[OPERATION] update_todo_revision(local_todo.id, sync_todo.revision + 2)
+[OPERATION] update_sync(local_todo)
+	    		- If the remote item is picked, the remote item replaces the local item including its revision. Afterward, the local item's revision is incremented by one. [A6]
+[OPERATION] replace_todo(sync_todo)
+[OPERATION] remove_sync(sync_todo.id) // not taken into account for sync
+
+5. Deletion at the server but not at the device:
+Local item does not have a corresponding remote item. This case will always be treated as a conflict:
+[OPERATION] resolve_remote_deletion()
+	- if the local item is to be deleted, it is simply deleted. [A7]
+[OPERATION] delete_local(local_todo.id)
+	- if the local item should be copied over to the server, the server will store the item including its revision as it is while the local item will have its revision incremented by one. [A8]
+[OPERATION] insert_to_sync(local_todo, local_todo.revision)
+[OPERATION] update_todo_revision(local_todo.id, local_todo.revision + 1)
+
+6. Deletion at the device but not at the server (this is only valid for an ever synchronized item, not a new item):
+	- if the item does not exist in the server, the item is deleted. [A9]
+[OPERATION] delete_local(local_todo.id)
+	- if the item exists in the server and:
+	     	- the local item is no longer exist (i.e., the left-over in sync table after local IDs adjustment whose ID cannot be found in the local todo) or has never existed (i.e., an initial sync), the remote todo is copied over to the local one, and the local todo revision is incremented by one. [A16]
+[OPERATION] insert_to_local(sync_todo.id)
+		- the remote item's revision is higher than the local item's, the remote item will overwrite the local item and the local item's revision is incremented by one. [A10]
+[OPERATION] replace_todo(sync_todo)
+[OPERATION] remove_sync(sync_todo.id) // not taken into account for sync
+		- the remote item's revision is equal to the item's:
+[OPERATION] are_todos_equal (local_todo, remote_todo)
+			- if the remote and local item's data are the same, both the local and remote item are deleted. [A11]
+[OPERATION] delete_sync(sync_todo.id)
+[OPERATION] delete_local(local_todo.id)
+			- if the remote and local item's data are not the same, there is a conflict:
+[OPERATION] resolve_local_deletion()
+				- if the remote is copied to the local item, the local item's revision is incremented by one. [A12]
+[OPERATION] replace_todo(sync_todo)
+[OPERATION] remove_sync(sync_todo.id) // not taken into account for sync
+				- if both of them are deleted, they are simply deleted. [A13]
+[OPERATION] delete_sync(sync_todo.id)
+[OPERATION] delete_local(local_todo.id)
+		- the remote item's revision is less that that of the local item, both the local and remote items are deleted. [A14]
+[OPERATION] delete_sync(sync_todo.id)
+[OPERATION] delete_local(local_todo.id)
+
+NOTE: all records that remain in the sync table will be used to construct the client-server data. The following are the indicators as to which certain client-server data a particular record will produce:
+CHUNK_DELETE_TODO: This record has all of its fields but id set to NULL indicating there is no update but deletion instead.
+CHUNK_NEW_TODO: Either this record has its revision number set to -1 as a new indicator. Or, this record has its revision number set to < -1 as a resurrection indicator (the client-server data constructor has to use the absolute value of (revision + 1) so that the server can directly save it)
+CHUNK_UPDATE_TODO: This record has its revision number set in the range [0..] or NULL as an update indicator. The NULL field won't be transported back to the server but only the updated field and the id field. Upon receiving an update, the server will increment the revision number by one

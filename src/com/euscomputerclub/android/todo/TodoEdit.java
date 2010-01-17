@@ -3,7 +3,9 @@ package com.euscomputerclub.android.todo;
 import java.util.Arrays;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
@@ -47,12 +49,23 @@ public class TodoEdit extends Activity {
 	protected Spinner statusSpinner;
 	/** The status values. */
 	protected String[] statusValues;
+	/** The alert dialog builder for this edit screen. */
+	protected AlertDialog.Builder alertBuilder;
 
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.todo_edit);
+
+		alertBuilder = new AlertDialog.Builder(this);
+		alertBuilder.setNeutralButton("Close", new DialogInterface.OnClickListener() {
+
+			public void onClick(DialogInterface dialog, int which) {
+
+				dialog.dismiss();
+			}
+		});
 		
 		titleEditText = (EditText) findViewById(R.id.EditTitleText);
 		deadlineDatePicker = (DatePicker) findViewById(R.id.EditDeadlineDatePicker);
@@ -72,16 +85,15 @@ public class TodoEdit extends Activity {
 		id = i.getLongExtra("id", -1);
 		if (id != -1) {
 
-			Cursor c = db.getTodo(id);
-			if (c.getCount() == 0) {
+			TodoItem todoItem = db.getTodo(id);
+			if (todoItem == null) {
 				
 				id = -1;
 			}
 			else {
 				
-				initializeWidgets(c);
+				initializeWidgets(todoItem);
 			}
-			c.close();
 		}
 
 		Button b = (Button) findViewById(R.id.EditSaveButton);
@@ -93,7 +105,17 @@ public class TodoEdit extends Activity {
 				if (id == -1) {
 
 					updateWidgetValues();
-					db.createTodo(title, deadline, priority, status, description);
+					long rc = db.createTodo(title, deadline, priority, status, description);
+					if (rc < 0) {
+
+						alertBuilder.setTitle("TodoEdit Error");
+						if (rc == -1) {
+
+							alertBuilder.setMessage("Cannot create due to DB error");
+						}
+						alertBuilder.show();
+						return;
+					}
 				}
 				else {
 					
@@ -119,29 +141,24 @@ public class TodoEdit extends Activity {
 	/**
 	 * Initializes the values of EditText and Spinner on the UI based on the first record in the Cursor.
 	 * 
-	 * @param c the cursor containing data with which the UI widgets are to be initialized
+	 * @param todo the todo with which the UI widgets are to be initialized
 	 */
-	protected void initializeWidgets(Cursor c) {
+	protected void initializeWidgets(TodoItem todo) {
+		
+		title = todo.title;
+		titleEditText.setText(todo.title);
 
-		if (c.getCount() == 0) {
-			
-			return;
-		}
-		
-		int oldPos = c.getPosition();
-		c.moveToFirst();
-		
-		title = c.getString(c.getColumnIndex(TodoDb.TITLE_COLUMN));
-		titleEditText.setText(title);
-		deadline = new Deadline(c.getString(c.getColumnIndex(TodoDb.DEADLINE_COLUMN)));
+		deadline = new Deadline(todo.deadline);
 		deadlineDatePicker.init(deadline.getYear(), deadline.getMonth(), deadline.getDayOfMonth(), null);
-		priority = c.getInt(c.getColumnIndex(TodoDb.PRIORITY_COLUMN));
-		prioritySpinner.setSelection((Arrays.binarySearch(priorityValues, String.valueOf(priority))));
-		status = c.getString(c.getColumnIndex(TodoDb.STATUS_COLUMN));
-		statusSpinner.setSelection((Arrays.binarySearch(priorityValues, status)));
-		description = c.getString(c.getColumnIndex(TodoDb.DESCRIPTION_COLUMN));
-		
-		c.move(oldPos);
+
+		priority = todo.priority.intValue();
+		prioritySpinner.setSelection(priority - 1);
+
+		status = todo.status;
+		statusSpinner.setSelection((Arrays.binarySearch(statusValues, status)));
+
+		description = todo.description;
+		descriptionEditText.setText(description);
 	}
 
 	/** Updates a todo entry in the DB. */
@@ -156,19 +173,12 @@ public class TodoEdit extends Activity {
 		updateWidgetValues();
 		
 		db.updateTodo(
-				id,
-				new boolean[] {
-						title.equals(oldTitle),
-						deadline.equals(oldDeadline),
-						priority == oldPriority,
-						status.equals(oldStatus),
-						description.equals(oldDescription)
-				},
-				title,
-				deadline,
-				new Integer(priority),
-				status,
-				description
+			id,
+			title.equals(oldTitle) ? null : title,
+			deadline.equals(oldDeadline) ? null : deadline,
+			priority == oldPriority ? null : new Integer(priority),
+			status.equals(oldStatus) ? null : status,
+			description.equals(oldDescription) ? null : description
 		);
 	}
 
@@ -180,9 +190,9 @@ public class TodoEdit extends Activity {
 		status = statusValues[statusSpinner.getSelectedItemPosition()];
 		priority = Utility.getPriorityValue(priorityValues[prioritySpinner.getSelectedItemPosition()]);
 		deadline = new Deadline(
-				deadlineDatePicker.getYear(),
-				deadlineDatePicker.getMonth(),
-				deadlineDatePicker.getDayOfMonth()
+			deadlineDatePicker.getYear(),
+			deadlineDatePicker.getMonth(),
+			deadlineDatePicker.getDayOfMonth()
 		);
 	}
 }

@@ -1,10 +1,18 @@
 package com.euscomputerclub.android.todo;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ListActivity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.View.OnClickListener;
@@ -14,6 +22,12 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketException;
 
 public class TodoList extends ListActivity {
 
@@ -88,6 +102,171 @@ public class TodoList extends ListActivity {
 	protected LinearLayout curr_selected_row;
 	/** The default color of the TextView in the ListView row. */
 	protected ColorStateList defaultColors;
+	/** The socket used to sync the local DB with the server's DB. */
+	protected DatagramSocket syncSocket;
+	/** The notification pop-up. */
+	protected AlertDialog.Builder alertBuilder;
+	/** The shared preferences of this Todo Application. */
+	public static final String PREFERENCES_NAME = "com.euscomputerclub.android.todo";
+	/** The user ID used for identification with the synchronization server. */
+	protected int userId;
+	/** The shared preferences' key for the user ID. */
+	protected static final String USER_ID = "todo_user_id";
+	/** The userId value when the ID is unset. */
+	protected static final int NO_USER_ID = -1;
+	/** The ID of the user ID selection dialog. */
+	protected static final int USER_ID_DIALOG = 0;
+	/** The sync progress dialog. */
+	protected ProgressDialog syncProgressDialog;
+	/** The conflict resolution dialog. */
+	protected AlertDialog.Builder conflictDialog;
+	/** The priority values. */
+	protected String priorityValues[];
+	/** The handler of this activity thread for sync. */
+	protected final Handler handler = new Handler() {
+
+		@Override
+		public void handleMessage(Message msg) {
+
+			Bundle b = msg.getData();
+			TodoItem localTodo = (TodoItem) b.get(TodoSync.LOCAL_TODO);
+			TodoItem remoteTodo = (TodoItem) b.get(TodoSync.REMOTE_TODO);
+			String message = b.getString(TodoSync.MESSAGE);
+			boolean isDone = b.getBoolean(TodoSync.DONE, false);
+
+			if (isDone) {
+
+				syncProgressDialog.dismiss();
+				return;
+			}
+
+			if (message != null) {
+
+				syncProgressDialog.setMessage(message);
+				return;
+			}
+
+			if (localTodo != null && remoteTodo != null) {
+
+				String localPriority = priorityValues[localTodo.priority.intValue()];
+				String remotePriority = priorityValues[remoteTodo.priority.intValue()];
+
+				conflictDialog.setMessage(
+					"[Local item]\n"
+					+ "\tTitle: " + localTodo.title + "\n"
+					+ "\tDeadline: " + localTodo.deadline + "\n"
+					+ "\tPriority: " + localPriority + "\n"
+					+ "\tStatus: " + localTodo.status + "\n"
+					+ "\tDescription: " + localTodo.description + "\n"
+					+ "[Remote item]\n"
+					+ "\tTitle: " + remoteTodo.title + "\n"
+					+ "\tDeadline: " + remoteTodo.deadline + "\n"
+					+ "\tPriority: " + remotePriority + "\n"
+					+ "\tStatus: " + remoteTodo.status + "\n"
+					+ "\tDescription: " + remoteTodo.description
+				);
+
+			} else if (localTodo != null) {
+
+				String localPriority = priorityValues[localTodo.priority.intValue()];
+
+				conflictDialog.setMessage(
+					"[Local item]\n"
+					+ "\tTitle: " + localTodo.title + "\n"
+					+ "\tDeadline: " + localTodo.deadline + "\n"
+					+ "\tPriority: " + localPriority + "\n"
+					+ "\tStatus: " + localTodo.status + "\n"
+					+ "\tDescription: " + localTodo.description + "\n"
+					+ "[Remote item is DELETED]"
+				);
+			} else {
+
+				String remotePriority = priorityValues[remoteTodo.priority.intValue()];
+
+				conflictDialog.setMessage(
+					"[Local item is DELETED]\n"
+					+ "[Remote item]\n"
+					+ "\tTitle: " + remoteTodo.title + "\n"
+					+ "\tDeadline: " + remoteTodo.deadline + "\n"
+					+ "\tPriority: " + remotePriority + "\n"
+					+ "\tStatus: " + remoteTodo.status + "\n"
+					+ "\tDescription: " + remoteTodo.description
+				);
+			}
+			
+			conflictDialog.show();
+		}
+	};
+	/** The sync thread. */
+	protected TodoSync syncThread;
+
+	@Override
+	protected Dialog onCreateDialog(int id) {
+
+		final Dialog d;
+
+		switch (id) {
+		case USER_ID_DIALOG:
+			d = new Dialog(this);
+			d.setContentView(R.layout.todo_user);
+			d.setTitle("User ID");
+			d.setCancelable(false);
+			Button b = (Button) d.findViewById(R.id.SelectUserIdSaveButton);
+			b.setOnClickListener(new OnClickListener() {
+
+				public void onClick(View v) {
+
+					try {
+						TextView t = (TextView) d.findViewById(R.id.SelectUserIdText);
+						int id = Integer.parseInt(t.getText().toString());
+
+						if (id < 0) {
+
+							alertBuilder.setTitle("User ID Error");
+							alertBuilder.setMessage("User ID must be a natural number");
+							alertBuilder.show();
+							return;
+						}
+
+						if (id != userId) {
+
+							SharedPreferences s = getSharedPreferences(
+
+								PREFERENCES_NAME, Context.MODE_PRIVATE
+							);
+
+							SharedPreferences.Editor e = s.edit();
+							e.putInt(USER_ID, id);
+							userId = id;
+							e.commit();
+						}
+						d.dismiss();
+					} catch (NumberFormatException e) {
+					
+						alertBuilder.setTitle("User ID Error");
+						alertBuilder.setMessage("User ID must be a natural number");
+						alertBuilder.show();
+					}
+				}
+			});
+			break;
+		default:
+			d = null;
+		}
+
+		return d;
+	}
+
+	@Override
+	protected void onPrepareDialog(int id, Dialog dialog) {
+
+		switch (id) {
+		case USER_ID_DIALOG:
+			TextView t = (TextView) dialog.findViewById(R.id.SelectUserIdText);
+			t.setText(userId == NO_USER_ID ? "" : String.valueOf(userId));
+			break;
+		}
+	}
 
 	/** Called when the activity is first created. */
 	@Override
@@ -95,6 +274,55 @@ public class TodoList extends ListActivity {
 
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.todo_list);
+
+		alertBuilder = new AlertDialog.Builder(this);
+		alertBuilder.setNeutralButton("Close", new DialogInterface.OnClickListener() {
+
+			public void onClick(DialogInterface dialog, int which) {
+
+				dialog.dismiss();
+			}
+		});
+
+		conflictDialog = new AlertDialog.Builder(this);
+		conflictDialog.setTitle("Pick local or remote?");
+		conflictDialog.setCancelable(false);
+		conflictDialog.setNegativeButton("Local", new DialogInterface.OnClickListener() {
+
+			public void onClick(DialogInterface dialog, int which) {
+
+				syncThread.setConflictResolution(TodoSync.ConflictResolution.PICK_LOCAL);
+				dialog.dismiss();
+			}
+		});
+		conflictDialog.setPositiveButton("Remote", new DialogInterface.OnClickListener() {
+
+			public void onClick(DialogInterface dialog, int which) {
+
+				syncThread.setConflictResolution(TodoSync.ConflictResolution.PICK_REMOTE);
+				dialog.dismiss();
+			}
+		});
+
+		priorityValues = getResources().getStringArray(R.array.priority_values);
+
+		SharedPreferences s = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+		userId = s.getInt(USER_ID, NO_USER_ID);
+		if (userId == NO_USER_ID) { // only happen once when the application is pristine
+
+			showDialog(USER_ID_DIALOG);
+		}
+
+		try {
+
+			syncSocket = new DatagramSocket();
+		} catch (SocketException e) {
+
+			alertBuilder.setTitle("TodoList Exception");
+			alertBuilder.setMessage(e.toString());
+			alertBuilder.show();
+			finish();
+		}
 
 		OnClickListener sortingButtonListener = new OnClickListener() {
 
@@ -176,6 +404,7 @@ public class TodoList extends ListActivity {
 
 			public void onClick(View v) {
 
+				db.close();
 				startActivityForResult(new Intent(TodoList.this, TodoEdit.class), TodoEdit.CREATE_REQUEST);
 			}
 		});
@@ -202,6 +431,40 @@ public class TodoList extends ListActivity {
 			}
 		});
 
+		b = (Button) findViewById(R.id.MainSyncButton);
+		b.setOnClickListener(new OnClickListener() {
+
+			public void onClick(View v) {
+
+				syncTodo();
+			}
+		});
+
+		b = (Button) findViewById(R.id.MainUserButton);
+		b.setOnClickListener(new OnClickListener() {
+
+			public void onClick(View v) {
+
+				showDialog(USER_ID_DIALOG);
+			}
+		});
+	}
+
+	/** Synchronize the ToDo items in the DB with the server. */
+	protected void syncTodo() {
+
+		// showDialog(SYNC_PROGRESS_DIALOG); Can't use because animation won't restart
+		// See http://code.google.com/p/android/issues/detail?id=4266
+		syncProgressDialog = new ProgressDialog(this);
+		syncProgressDialog.setIndeterminate(true);
+		syncProgressDialog.setCancelable(false);
+		syncProgressDialog.show();
+
+		if (syncThread == null || syncThread.getState() == Thread.State.TERMINATED) {
+
+			syncThread = new TodoSync(handler, userId);
+			syncThread.start();
+		}
 	}
 
 	/** Sets the background of a ListView's row indicating a selection. */
