@@ -144,7 +144,7 @@ public class TodoEdit extends Activity {
 	 * @param todo the todo with which the UI widgets are to be initialized
 	 */
 	protected void initializeWidgets(TodoItem todo) {
-		
+
 		title = todo.title;
 		titleEditText.setText(todo.title);
 
@@ -169,9 +169,9 @@ public class TodoEdit extends Activity {
 		String oldStatus = status;
 		Deadline oldDeadline = deadline;
 		int oldPriority = priority;
-		
+
 		updateWidgetValues();
-		
+
 		db.updateTodo(
 			id,
 			title.equals(oldTitle) ? null : title,
