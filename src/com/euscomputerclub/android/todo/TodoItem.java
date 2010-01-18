@@ -1,5 +1,6 @@
 package com.euscomputerclub.android.todo;
 
+import android.database.Cursor;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -17,6 +18,19 @@ public class TodoItem implements Parcelable
 	public String status;
 	public String description;
 	public Integer revision;
+
+	TodoItem(Cursor c) {
+
+		this(
+			new Long(c.getLong(c.getColumnIndex(TodoDb.ID_COLUMN))),
+			c.getString(c.getColumnIndex(TodoDb.TITLE_COLUMN)),
+			c.getString(c.getColumnIndex(TodoDb.DEADLINE_COLUMN)),
+			new Integer(c.getInt(c.getColumnIndex(TodoDb.PRIORITY_COLUMN))),
+			c.getString(c.getColumnIndex(TodoDb.STATUS_COLUMN)),
+			c.getString(c.getColumnIndex(TodoDb.DESCRIPTION_COLUMN)),
+			new Integer(c.getInt(c.getColumnIndex(TodoDb.REVISION_COLUMN)))
+		);
+	}
 
 	TodoItem(Long id, String title, String deadline, Integer priority,
 		String status, String description, Integer revision) {
@@ -67,4 +81,20 @@ public class TodoItem implements Parcelable
 			return new TodoItem[size];
 		}
 	};
+
+	public boolean equals(Object o) {
+
+		if (o instanceof TodoItem) {
+
+			TodoItem i = (TodoItem) o;
+
+			return title.equals(i.title)
+				&& deadline.equals(i.deadline)
+				&& priority.equals(i.priority)
+				&& status.equals(i.status)
+				&& description.equals(i.description);
+		}
+
+		return false;
+	}
 }

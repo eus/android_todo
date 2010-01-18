@@ -185,6 +185,23 @@ public class TodoDb {
 		db = null;
 	}
 
+	/** Drop if necessary and create the sync table again so that the autoincremented field is reset. */
+	public void recreateSyncTable() {
+
+		ensureDb();
+
+		db.execSQL("drop table if exists " + SYNC_TABLE + ";");
+		db.execSQL(TodoDbOpenHelper.CREATE_SYNC_TABLE);
+	}
+
+	/** Drop the sync table to save memory. */
+	public void dropSync() {
+
+		ensureDb();
+
+		db.execSQL("drop table " + SYNC_TABLE + ";");
+	}
+
 	/**
 	 * Creates a new todo item.
 	 * 
@@ -208,6 +225,27 @@ public class TodoDb {
 		v.put(DESCRIPTION_COLUMN, description);
 		
 		return db.insert(TODO_TABLE, null, v);
+	}
+
+	/**
+	 * Creates a new sync todo item
+	 */
+	public long createSyncTodo(long id, String title, String deadline,
+				   int priority, String status, String description,
+				   int revision) {
+		
+		ensureDb();
+
+		ContentValues v = new ContentValues();
+		v.put(ID_COLUMN, id);
+		v.put(TITLE_COLUMN, title);
+		v.put(DEADLINE_COLUMN, deadline);
+		v.put(PRIORITY_COLUMN, priority);
+		v.put(STATUS_COLUMN, status);
+		v.put(DESCRIPTION_COLUMN, description);
+		v.put(REVISION_COLUMN, revision);
+		
+		return db.insert(SYNC_TABLE, null, v);
 	}
 
 	/**
@@ -699,6 +737,80 @@ public class TodoDb {
 				null,
 				null,
 				sortByColumn + " " + (isAsc ? "asc" : "desc")
+		);
+	}
+	
+	/** Returns all new todo items to be sent to the synchronization server. */
+	public Cursor getAllNewSyncTodo() {
+		
+		ensureDb();
+
+		return db.query(
+				SYNC_TABLE,
+				new String[] {
+					ID_COLUMN,
+					TITLE_COLUMN,
+					DEADLINE_COLUMN,
+					PRIORITY_COLUMN,
+					STATUS_COLUMN,
+					DESCRIPTION_COLUMN,
+					REVISION_COLUMN
+				},
+				REVISION_COLUMN + " < 0",
+				null,
+				null,
+				null,
+				null
+		);
+	}
+	
+	/** Returns all updated todo items to be sent to the synchronization server. */
+	public Cursor getAllUpdatedSyncTodo() {
+		
+		ensureDb();
+
+		return db.query(
+				SYNC_TABLE,
+				new String[] {
+					ID_COLUMN,
+					TITLE_COLUMN,
+					DEADLINE_COLUMN,
+					PRIORITY_COLUMN,
+					STATUS_COLUMN,
+					DESCRIPTION_COLUMN,
+					REVISION_COLUMN
+				},
+				"(" + TITLE_COLUMN + " is not null"
+				+ " or " + DEADLINE_COLUMN + " is not null"
+				+ " or " + PRIORITY_COLUMN + " is not null"
+				+ " or " + STATUS_COLUMN + " is not null"
+				+ " or " + DESCRIPTION_COLUMN + " is not null)"
+				+ " and revision is null",
+				null,
+				null,
+				null,
+				null
+		);
+	}
+	
+	/** Returns all deleted todo items to be sent to the synchronization server. */
+	public Cursor getAllDeletedSyncTodo() {
+		
+		ensureDb();
+
+		return db.query(
+				SYNC_TABLE,
+				new String[] {ID_COLUMN},
+				TITLE_COLUMN + " is null"
+				+ " and " + DEADLINE_COLUMN + " is null"
+				+ " and " + PRIORITY_COLUMN + " is null"
+				+ " and " + STATUS_COLUMN + " is null"
+				+ " and " + DESCRIPTION_COLUMN + " is null"
+				+ " and revision is null",
+				null,
+				null,
+				null,
+				null
 		);
 	}
 

@@ -98,7 +98,7 @@ public class TodoSyncCommunication
 	 * ClientServerSyncData represents the todo sync data to be transfered
 	 * to the sync server.
 	 */
-	public class ClientServerSyncData
+	public static class ClientServerSyncData
 	{
 		final ByteBuffer buffer;
 
@@ -159,6 +159,7 @@ public class TodoSyncCommunication
 		for (int i = 0; i < MAX_REGISTER_RETRY && (a == null || a.get(0) != REGISTER_ACK_TYPE); i++) {
 
 			a = sendAndReceive(b, REGISTER_TIMEOUT, REGISTER_ACK_LEN);
+android.util.Log.d("Eus", "a is null? " + (a == null ? "true" : "false") + ", a.get(0) = " + a.get(0));
 		}
 
 		return a.get(0) == REGISTER_ACK_TYPE;

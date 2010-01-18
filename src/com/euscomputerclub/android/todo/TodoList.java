@@ -22,12 +22,6 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.SocketException;
 
 public class TodoList extends ListActivity {
 
@@ -102,8 +96,6 @@ public class TodoList extends ListActivity {
 	protected LinearLayout curr_selected_row;
 	/** The default color of the TextView in the ListView row. */
 	protected ColorStateList defaultColors;
-	/** The socket used to sync the local DB with the server's DB. */
-	protected DatagramSocket syncSocket;
 	/** The notification pop-up. */
 	protected AlertDialog.Builder alertBuilder;
 	/** The shared preferences of this Todo Application. */
@@ -132,10 +124,20 @@ public class TodoList extends ListActivity {
 			TodoItem localTodo = (TodoItem) b.get(TodoSync.LOCAL_TODO);
 			TodoItem remoteTodo = (TodoItem) b.get(TodoSync.REMOTE_TODO);
 			String message = b.getString(TodoSync.MESSAGE);
+			String errorMessage = b.getString(TodoSync.ERROR_MESSAGE);
 			boolean isDone = b.getBoolean(TodoSync.DONE, false);
 
 			if (isDone) {
 
+				syncProgressDialog.dismiss();
+				return;
+			}
+
+			if (errorMessage != null) {
+
+				alertBuilder.setTitle("Sync Error");
+				alertBuilder.setMessage(errorMessage);
+				alertBuilder.show();
 				syncProgressDialog.dismiss();
 				return;
 			}
@@ -313,17 +315,6 @@ public class TodoList extends ListActivity {
 			showDialog(USER_ID_DIALOG);
 		}
 
-		try {
-
-			syncSocket = new DatagramSocket();
-		} catch (SocketException e) {
-
-			alertBuilder.setTitle("TodoList Exception");
-			alertBuilder.setMessage(e.toString());
-			alertBuilder.show();
-			finish();
-		}
-
 		OnClickListener sortingButtonListener = new OnClickListener() {
 
 			public void onClick(View v) {
@@ -462,7 +453,7 @@ public class TodoList extends ListActivity {
 
 		if (syncThread == null || syncThread.getState() == Thread.State.TERMINATED) {
 
-			syncThread = new TodoSync(handler, userId);
+			syncThread = new TodoSync(db, handler, userId);
 			syncThread.start();
 		}
 	}
