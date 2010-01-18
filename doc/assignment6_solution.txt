@@ -1,3 +1,8 @@
+[NOTE] This program requires the use of synchronization server that can be checked out with the following git commands:
+git clone git://github.com/eus/screamer.git 
+cd screamer
+git checkout -b android_todo origin/android_todo
+
 My understanding to the problem is that a person can have multiple Android devices, the person only works with one Android device at a time, and the person always synchronizes the local data in the current Android device before the person uses another Android device. Such a synchronization can only happen at most once before switching over. A pristine Android device that the person uses for the very first time must always be synchronized first.
 
 The rule must be like that. Otherwise, the following three scenarios will occur:
