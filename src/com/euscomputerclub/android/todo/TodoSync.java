@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 /**
@@ -68,7 +69,7 @@ public class TodoSync extends Thread
 	protected final Thread workerThread = new Thread() {
 
 		/** The size of the TLV chunk header. */
-		protected final static short SIZE_OF_CHUNK = (short) Byte.SIZE + (short) Short.SIZE;
+		protected final static short SIZE_OF_CHUNK = (short) ((Byte.SIZE + Short.SIZE) / Byte.SIZE);
 		/** A new todo item to be stored. */
 		protected final static byte CHUNK_NEW_TODO = 1;
 		/** An update for a todo item. */
@@ -104,6 +105,7 @@ public class TodoSync extends Thread
 					return;
 				}
 
+				db.recreateSyncTable();
 				processTodos(comm.serverClientSync());
 
 				sync();
@@ -213,17 +215,7 @@ public class TodoSync extends Thread
 
 		protected void sync() {
 
-			db.recreateSyncTable();
-
-			Cursor c = db.getAllTodo(new String[] {
-				TodoDb.ID_COLUMN,
-				TodoDb.TITLE_COLUMN,
-				TodoDb.DEADLINE_COLUMN,
-				TodoDb.PRIORITY_COLUMN,
-				TodoDb.STATUS_COLUMN,
-				TodoDb.DESCRIPTION_COLUMN,
-				TodoDb.REVISION_COLUMN
-			}, TodoDb.ID_COLUMN, true);
+			Cursor c = db.getAllTodoIncludingDeletedOnes();
 
 			syncTotalRecords = c.getCount();
 			syncCurrRecords = 0;
@@ -358,7 +350,7 @@ public class TodoSync extends Thread
 			db.importNewTodos(); // [A16]
 		}
 
-		protected TodoSyncCommunication.ClientServerSyncData createSyncData() {
+		protected TodoSyncCommunication.ClientServerSyncData createSyncData() throws UnsupportedEncodingException {
 
 			/* calculate client_server_data_len */
 			createDataTotalBytes = 0;
@@ -371,15 +363,15 @@ public class TodoSync extends Thread
 
 				createDataTotalBytes += SIZE_OF_CHUNK
 					+ 6 * SIZE_OF_CHUNK
-					+ c.getBlob(c.getColumnIndex(TodoDb.TITLE_COLUMN)).length
-					+ c.getBlob(c.getColumnIndex(TodoDb.DEADLINE_COLUMN)).length
-					+ c.getBlob(c.getColumnIndex(TodoDb.STATUS_COLUMN)).length
-					+ c.getBlob(c.getColumnIndex(TodoDb.DESCRIPTION_COLUMN)).length
-					+ 2 * Integer.SIZE;
+					+ c.getString(c.getColumnIndex(TodoDb.TITLE_COLUMN)).getBytes("UTF-8").length
+					+ c.getString(c.getColumnIndex(TodoDb.DEADLINE_COLUMN)).getBytes("UTF-8").length
+					+ c.getString(c.getColumnIndex(TodoDb.STATUS_COLUMN)).getBytes("UTF-8").length
+					+ c.getString(c.getColumnIndex(TodoDb.DESCRIPTION_COLUMN)).getBytes("UTF-8").length
+					+ 2 * Integer.SIZE / Byte.SIZE;
 
 				if (c.getInt(c.getColumnIndex(TodoDb.REVISION_COLUMN)) != TodoDb.NEW_TODO_REVISION) {
 
-					createDataTotalBytes += SIZE_OF_CHUNK + Integer.SIZE;
+					createDataTotalBytes += SIZE_OF_CHUNK + Integer.SIZE / Byte.SIZE;
 				}
 			}
 			c.close();
@@ -388,7 +380,7 @@ public class TodoSync extends Thread
 			c = db.getAllDeletedSyncTodo();
 			while (c.moveToNext()) {
 
-				createDataTotalBytes += 2 * SIZE_OF_CHUNK + Integer.SIZE;
+				createDataTotalBytes += 2 * SIZE_OF_CHUNK + Integer.SIZE / Byte.SIZE;
 			}
 			c.close();
 
@@ -407,13 +399,14 @@ public class TodoSync extends Thread
 						case 0:
 						case 3:
 						case 6:
-							createDataTotalBytes += SIZE_OF_CHUNK + Integer.SIZE;
+							createDataTotalBytes += SIZE_OF_CHUNK + Integer.SIZE / Byte.SIZE;
 							break;
 						case 1:
 						case 2:
 						case 4:
 						case 5:
-							createDataTotalBytes += SIZE_OF_CHUNK + c.getBlob(i).length;
+							createDataTotalBytes += SIZE_OF_CHUNK
+								+ c.getString(i).getBytes("UTF-8").length;
 							break;
 						}
 					}
@@ -474,7 +467,7 @@ public class TodoSync extends Thread
 						case 0:
 						case 3:
 						case 6:
-							b.putShort((short) Integer.SIZE);
+							b.putShort((short) (Integer.SIZE / Byte.SIZE));
 
 							int intVal = c.getInt(i);
 							if (i == 6) {
@@ -483,13 +476,13 @@ public class TodoSync extends Thread
 							}
 							b.putInt(intVal);
 
-							chunkLen += SIZE_OF_CHUNK + (short) Integer.SIZE;
+							chunkLen += SIZE_OF_CHUNK + (short) (Integer.SIZE / Byte.SIZE);
 							break;
 						case 1:
 						case 2:
 						case 4:
 						case 5:
-							byte[] blob = c.getBlob(i);
+							byte[] blob = c.getString(i).getBytes("UTF-8");
 							b.putShort((short) blob.length);
 
 							b.put(blob);
@@ -507,7 +500,7 @@ public class TodoSync extends Thread
 			c = db.getAllDeletedSyncTodo();
 			while (c.moveToNext()) {
 
-				short idLen = (short) Integer.SIZE;
+				short idLen = (short) (Integer.SIZE / Byte.SIZE);
 
 				b.put(CHUNK_DELETE_TODO);
 				b.putShort((short) (SIZE_OF_CHUNK + idLen));
@@ -564,17 +557,17 @@ public class TodoSync extends Thread
 						case 0:
 						case 3:
 						case 6:
-							b.putShort((short) Integer.SIZE);
+							b.putShort((short) (Integer.SIZE / Byte.SIZE));
 
 							b.putInt(c.getInt(i));
 
-							chunkLen += SIZE_OF_CHUNK + (short) Integer.SIZE;
+							chunkLen += SIZE_OF_CHUNK + (short) (Integer.SIZE / Byte.SIZE);
 							break;
 						case 1:
 						case 2:
 						case 4:
 						case 5:
-							byte[] blob = c.getBlob(i);
+							byte[] blob = c.getString(i).getBytes("UTF-8");
 							b.putShort((short) blob.length);
 
 							b.put(blob);
@@ -675,7 +668,7 @@ public class TodoSync extends Thread
 	public void run() {
 
 		sendProgressMessage("Starting...");
-		workerThread.run();
+		workerThread.start();
 		while (workerThread.getState() != Thread.State.TERMINATED) {
 
 			try {

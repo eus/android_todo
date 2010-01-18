@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -126,7 +127,13 @@ public class TodoSyncCommunication
 	public TodoSyncCommunication() throws SocketException {
 
 		daddr = new InetSocketAddress("10.0.2.2", 50001);
-		sock = new DatagramSocket();
+
+		// Without a port number, being too long in the conflict
+		// resolution screen will cause the socket to close and to
+		// bind to another port when the conflict is resolved screwing
+		// up the sync session in the server.
+		sock = new DatagramSocket(50001);
+
 		sock.connect(daddr);
 	}
 
@@ -159,7 +166,6 @@ public class TodoSyncCommunication
 		for (int i = 0; i < MAX_REGISTER_RETRY && (a == null || a.get(0) != REGISTER_ACK_TYPE); i++) {
 
 			a = sendAndReceive(b, REGISTER_TIMEOUT, REGISTER_ACK_LEN);
-android.util.Log.d("Eus", "a is null? " + (a == null ? "true" : "false") + ", a.get(0) = " + a.get(0));
 		}
 
 		return a.get(0) == REGISTER_ACK_TYPE;
@@ -238,10 +244,14 @@ android.util.Log.d("Eus", "a is null? " + (a == null ? "true" : "false") + ", a.
 			sock.send(new DatagramPacket(b, b.length, daddr));
 		}
 		DatagramPacket d = new DatagramPacket(new byte[receivedDataLen], receivedDataLen);
-		while (d.getLength() != receivedDataLen) {
+		do {
 
-			sock.receive(d);
-		}
+			try {
+
+				sock.receive(d);
+			} catch (SocketTimeoutException to) {
+			}
+		} while (d.getLength() > receivedDataLen);
 		if (timeout != 0) {
 			sock.setSoTimeout(0);
 		}

@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 /**
  * Class TodoDB serves as the central storage for all created todo items.
@@ -416,6 +415,12 @@ public class TodoDb {
 
 			v.put(REVISION_COLUMN, remoteTodo.revision.intValue() + 1);
 		}
+
+		db.delete(
+			DELETED_TODO_TABLE,
+			ID_COLUMN + " = ?",
+			new String[] {remoteTodo.id.toString()}
+		);
 		
 		return db.update(TODO_TABLE, v, ID_COLUMN + " = ?", new String[] {remoteTodo.id.toString()});
 	}
@@ -737,6 +742,35 @@ public class TodoDb {
 				null,
 				null,
 				sortByColumn + " " + (isAsc ? "asc" : "desc")
+		);
+	}
+	
+	/**
+	 * Returns all todo items including the ones that have ever been
+	 * synchronized and get deleted before this sync.
+	 * 
+	 * @return a cursor containing all todo items in the todo table.
+	 */
+	public Cursor getAllTodoIncludingDeletedOnes() {
+		
+		ensureDb();
+
+		return db.query(
+			TODO_TABLE,
+			new String[] {
+				ID_COLUMN,
+				TITLE_COLUMN,
+				DEADLINE_COLUMN,
+				PRIORITY_COLUMN,
+				STATUS_COLUMN,
+				DESCRIPTION_COLUMN,
+				REVISION_COLUMN
+			},
+			null,
+			null,
+			null,
+			null,
+			null
 		);
 	}
 	

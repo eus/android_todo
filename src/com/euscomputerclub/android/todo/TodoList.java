@@ -130,6 +130,7 @@ public class TodoList extends ListActivity {
 			if (isDone) {
 
 				syncProgressDialog.dismiss();
+				updateTodoList();
 				return;
 			}
 
@@ -139,6 +140,7 @@ public class TodoList extends ListActivity {
 				alertBuilder.setMessage(errorMessage);
 				alertBuilder.show();
 				syncProgressDialog.dismiss();
+				updateTodoList();
 				return;
 			}
 
@@ -150,8 +152,8 @@ public class TodoList extends ListActivity {
 
 			if (localTodo != null && remoteTodo != null) {
 
-				String localPriority = priorityValues[localTodo.priority.intValue()];
-				String remotePriority = priorityValues[remoteTodo.priority.intValue()];
+				String localPriority = priorityValues[localTodo.priority.intValue() - 1];
+				String remotePriority = priorityValues[remoteTodo.priority.intValue() - 1];
 
 				conflictDialog.setMessage(
 					"[Local item]\n"
@@ -170,7 +172,7 @@ public class TodoList extends ListActivity {
 
 			} else if (localTodo != null) {
 
-				String localPriority = priorityValues[localTodo.priority.intValue()];
+				String localPriority = priorityValues[localTodo.priority.intValue() - 1];
 
 				conflictDialog.setMessage(
 					"[Local item]\n"
@@ -183,7 +185,7 @@ public class TodoList extends ListActivity {
 				);
 			} else {
 
-				String remotePriority = priorityValues[remoteTodo.priority.intValue()];
+				String remotePriority = priorityValues[remoteTodo.priority.intValue() - 1];
 
 				conflictDialog.setMessage(
 					"[Local item is DELETED]\n"

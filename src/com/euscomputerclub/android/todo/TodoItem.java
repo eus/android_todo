@@ -87,7 +87,6 @@ public class TodoItem implements Parcelable
 		if (o instanceof TodoItem) {
 
 			TodoItem i = (TodoItem) o;
-
 			return title.equals(i.title)
 				&& deadline.equals(i.deadline)
 				&& priority.equals(i.priority)
